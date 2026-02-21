@@ -10,26 +10,26 @@ class CronService {
   init() {
     console.log('初始化定时任务...');
     
-    // 每天凌晨2点抓取RSS源
-    cron.schedule('0 2 * * *', async () => {
+    // 每天早上6点抓取RSS源
+    cron.schedule('0 6 * * *', async () => {
       console.log('执行定时RSS抓取任务...');
       await this.fetchRssSources();
     });
     
-    // 每天凌晨3点处理未处理的新闻
-    cron.schedule('0 3 * * *', async () => {
+    // 每天早上7点处理未处理的新闻
+    cron.schedule('0 7 * * *', async () => {
       console.log('执行定时新闻处理任务...');
       await this.processNews();
     });
     
-    // 每天凌晨4点生成语音文件
-    cron.schedule('0 4 * * *', async () => {
+    // 每天早上8点生成语音文件
+    cron.schedule('0 8 * * *', async () => {
       console.log('执行定时语音生成任务...');
       await this.generateSpeech();
     });
     
-    // 每天早上8点推送邮件
-    cron.schedule('0 8 * * *', async () => {
+    // 每天早上8点半推送邮件
+    cron.schedule('30 8 * * *', async () => {
       console.log('执行定时邮件推送任务...');
       await this.sendEmails();
     });
