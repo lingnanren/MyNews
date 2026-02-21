@@ -1,0 +1,31 @@
+version: '3'
+
+services:
+  mynews:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=3000
+      - NODE_ENV=development
+      - SMTP_SERVER=${SMTP_SERVER}
+      - SMTP_PORT=${SMTP_PORT}
+      - SMTP_USERNAME=${SMTP_USERNAME}
+      - SMTP_PASSWORD=${SMTP_PASSWORD}
+      - FROM_EMAIL=${FROM_EMAIL}
+      - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY}
+      - DEEPSEEK_API_URL=${DEEPSEEK_API_URL}
+      - PUSH_TIME=${PUSH_TIME}
+      - INTERESTS=${INTERESTS}
+    volumes:
+      - .:/app
+    depends_on:
+      - cpolar
+
+  cpolar:
+    image: cpolar/cpolar
+    ports:
+      - "8080:8080"
+    environment:
+      - CPOLAR_AUTHTOKEN=${CPOLAR_AUTHTOKEN}
+    command: cpolar http --addr 3000 mynews:3000

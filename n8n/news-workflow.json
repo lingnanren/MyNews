@@ -1,0 +1,77 @@
+{
+  "id": "news-processing-workflow",
+  "name": "新闻处理工作流",
+  "nodes": [
+    {
+      "id": "fetch-rss",
+      "name": "抓取RSS源",
+      "type": "n8n-nodes-base.httpRequest",
+      "parameters": {
+        "url": "{{$env.MYNEWS_API_URL}}/api/rss/sources/fetch-all",
+        "method": "POST"
+      }
+    },
+    {
+      "id": "process-news",
+      "name": "处理新闻",
+      "type": "n8n-nodes-base.httpRequest",
+      "parameters": {
+        "url": "{{$env.MYNEWS_API_URL}}/api/ai/summary/process-unprocessed",
+        "method": "POST"
+      }
+    },
+    {
+      "id": "generate-speech",
+      "name": "生成语音",
+      "type": "n8n-nodes-base.httpRequest",
+      "parameters": {
+        "url": "{{$env.MYNEWS_API_URL}}/api/tts/speech/process-processed",
+        "method": "POST"
+      }
+    },
+    {
+      "id": "send-emails",
+      "name": "发送邮件",
+      "type": "n8n-nodes-base.httpRequest",
+      "parameters": {
+        "url": "{{$env.MYNEWS_API_URL}}/api/notify/email/all",
+        "method": "POST"
+      }
+    }
+  ],
+  "connections": {
+    "fetch-rss": {
+      "main": [
+        [
+          {
+            "node": "process-news",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "process-news": {
+      "main": [
+        [
+          {
+            "node": "generate-speech",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "generate-speech": {
+      "main": [
+        [
+          {
+            "node": "send-emails",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

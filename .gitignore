@@ -1,0 +1,53 @@
+# 系统文件
+.DS_Store
+Thumbs.db
+
+# 环境变量文件
+.env
+.env.local
+.env.*.local
+
+# 数据库文件
+database.sqlite
+
+# 日志文件
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# 依赖包
+node_modules
+.pnp
+.pnp.js
+
+# 构建文件
+build
+dist
+dist-ssr
+*.local
+
+# IDE配置
+.vscode/*
+!.vscode/extensions.json
+.idea
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# 测试覆盖率
+coverage
+*.lcov
+
+# 临时文件
+*.tmp
+*.temp
+
+# 其他
+.nvm
+.trae/

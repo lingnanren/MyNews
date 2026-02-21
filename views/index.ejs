@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title %></title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      line-height: 1.6;
+      color: #333;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    header {
+      background: #3498db;
+      color: white;
+      padding: 20px;
+      border-radius: 5px;
+      margin-bottom: 30px;
+    }
+    h1 {
+      margin: 0;
+    }
+    .status-section {
+      background: #f9f9f9;
+      padding: 20px;
+      border-radius: 5px;
+      margin-bottom: 20px;
+    }
+    .status-section h2 {
+      color: #333;
+      border-bottom: 2px solid #3498db;
+      padding-bottom: 10px;
+    }
+    .api-endpoint {
+      background: #e8f4f8;
+      padding: 10px;
+      border-left: 4px solid #3498db;
+      margin-bottom: 10px;
+    }
+    .api-endpoint code {
+      font-family: 'Courier New', monospace;
+    }
+    footer {
+      margin-top: 50px;
+      text-align: center;
+      color: #666;
+      border-top: 1px solid #eee;
+      padding-top: 20px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>MyNews 自定义新闻聚合系统</h1>
+    <p>个性化新闻推送，让您随时随地了解感兴趣的领域动态</p>
+  </header>
+
+  <div class="status-section">
+    <h2>系统状态</h2>
+    <p>服务器运行中，API接口已就绪</p>
+  </div>
+
+  <div class="status-section">
+    <h2>API接口</h2>
+    
+    <h3>RSS源管理</h3>
+    <div class="api-endpoint">
+      <code>GET /api/rss/sources</code> - 获取所有RSS源
+    </div>
+    <div class="api-endpoint">
+      <code>POST /api/rss/sources</code> - 添加RSS源
+    </div>
+    <div class="api-endpoint">
+      <code>PUT /api/rss/sources
