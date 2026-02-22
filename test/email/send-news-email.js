@@ -1,4 +1,4 @@
-const emailService = require('./src/services/notify/emailService');
+const emailService = require('../../src/services/notify/emailService');
 
 async function sendNewsEmail() {
   try {

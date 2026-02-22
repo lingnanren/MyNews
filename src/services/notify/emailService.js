@@ -45,30 +45,51 @@ class EmailService {
         }
       }
       
-      // 构建邮件HTML内容
+      // 检查是否有足够的新闻内容
+      let totalNewsCount = 0;
+      for (const newsList of Object.values(newsByCategory)) {
+        totalNewsCount += newsList.length;
+      }
+      
+      // 如果没有新闻内容，返回错误
+      if (totalNewsCount === 0) {
+        return { success: false, error: '没有找到足够的新闻内容，无法生成邮件' };
+      }
+      
+      // 构建邮件HTML内容 - 每日读报60秒形式
       let htmlContent = `
-        <div style="font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto;">
-          <h1 style="color: #333; text-align: center;">MyNews 每日新闻摘要</h1>
-          <p style="color: #666; text-align: center;">${new Date().toLocaleDateString('zh-CN')}</p>
-          <hr style="border: 1px solid #eee; margin: 20px 0;">
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #f9f9f9; padding: 20px; border-radius: 8px;">
+          <div style="background-color: #3498db; color: white; padding: 15px; border-radius: 6px; text-align: center;">
+            <h1 style="margin: 0; font-size: 24px;">📰 每日读报60秒</h1>
+            <p style="margin: 5px 0 0 0; font-size: 14px;">${new Date().toLocaleDateString('zh-CN')}</p>
+          </div>
+          
+          <div style="background-color: white; padding: 20px; margin-top: 20px; border-radius: 6px;">
+            <p style="color: #666; margin-bottom: 20px;">每天60秒，了解天下事！</p>
       `;
       
-      // 添加各个领域的新闻
+      // 添加各个领域的新闻 - 简洁列表形式
+      let newsCount = 0;
       for (const [category, newsList] of Object.entries(newsByCategory)) {
         htmlContent += `
-          <h2 style="color: #333; margin-top: 30px;">${category}</h2>
-          <div style="margin-left: 20px;">
+          <div style="margin-bottom: 20px;">
+            <h2 style="color: #3498db; margin: 0 0 15px 0; font-size: 18px; border-bottom: 2px solid #3498db; padding-bottom: 5px;">${category}</h2>
         `;
         
         for (const news of newsList) {
+          // 跳过测试数据和example链接
+          if (news.url && (news.url.includes('example.com') || news.url.includes('example.org'))) {
+            continue;
+          }
+          
           htmlContent += `
-            <div style="margin-bottom: 20px; padding: 15px; border-left: 4px solid #3498db; background-color: #f9f9f9;">
-              <h3 style="margin: 0 0 10px 0; color: #333;">${news.title}</h3>
-              <p style="margin: 0 0 10px 0; color: #666; font-size: 14px;">来源：${news.source} | ${news.publishedAt ? news.publishedAt.toLocaleDateString('zh-CN') : ''}</p>
-              <p style="margin: 0 0 15px 0; color: #555;">${news.summary}</p>
-              <a href="${news.url}" style="color: #3498db; text-decoration: none; font-weight: bold;">阅读原文</a>
+            <div style="margin-bottom: 12px; padding-left: 10px; border-left: 3px solid #e0e0e0;">
+              <p style="margin: 0 0 5px 0; font-weight: bold; color: #333;">${news.title}</p>
+              <p style="margin: 0 0 8px 0; font-size: 12px; color: #666;">${news.source}</p>
+              <p style="margin: 0; font-size: 14px; color: #555; line-height: 1.4;">${news.summary || '暂无摘要'}</p>
             </div>
           `;
+          newsCount++;
         }
         
         htmlContent += `
@@ -77,8 +98,12 @@ class EmailService {
       }
       
       htmlContent += `
-          <hr style="border: 1px solid #eee; margin: 30px 0;">
-          <p style="color: #999; font-size: 12px; text-align: center;">此邮件由 MyNews 自动生成，请勿直接回复。</p>
+          </div>
+          
+          <div style="margin-top: 20px; text-align: center; font-size: 12px; color: #999;">
+            <p>此邮件由 MyNews 自动生成，请勿直接回复</p>
+            <p>每天8点半，准时为您带来最新资讯</p>
+          </div>
         </div>
       `;
       

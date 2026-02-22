@@ -1,5 +1,5 @@
 const Parser = require('rss-parser');
-const { RssSource } = require('./src/models');
+const { RssSource } = require('../../src/models');
 
 const parser = new Parser();
 
