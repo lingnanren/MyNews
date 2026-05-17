@@ -1,6 +1,61 @@
 # MyNews
 
-MyNews is a configurable automated news-briefing system for building a 1-5 minute daily "news breakfast" from RSS-like sources, article pages, extractive summarization, and email delivery.
+MyNews contains two compatible news workflows:
+
+- `main.py`: PRD-aligned “每天读报5分钟” daily newspaper automation. It collects domestic, international, and finance RSSHub feeds, generates 30-50 character Chinese summaries, renders the fixed HTML email format, and sends it by SMTP.
+- `python -m mynews.cli`: the original configurable finance briefing workflow, kept for backward compatibility.
+
+## 每天读报5分钟
+
+Install dependencies:
+
+```bash
+pip install -r requirements.txt
+```
+
+Create `.env` from `.env.example`, then configure:
+
+```bash
+DEEPSEEK_API_KEY=sk-xxxxxx
+DEEPSEEK_MODEL=deepseek-chat
+SMTP_SERVER=smtp.qq.com
+SMTP_PORT=587
+SMTP_USER=your_email@qq.com
+SMTP_PASSWORD=your_password
+RECIPIENT_EMAILS=test1@example.com,test2@example.com
+```
+
+Generate a dry-run preview:
+
+```bash
+python main.py --dry-run
+```
+
+Send the email:
+
+```bash
+python main.py
+```
+
+The PRD implementation is structured as:
+
+- `modules/date_calculator.py`: Asia/Shanghai date, lunar date, and ganzhi calculation.
+- `modules/data_collector.py`: async RSS collection using the configured domestic/international/finance sources.
+- `modules/ai_processor.py`: DeepSeek summary generation, headline selection, and extension placeholders.
+- `modules/formatter.py`: fixed text and HTML output format.
+- `modules/email_sender.py`: HTML SMTP delivery with retries.
+- `templates/email_template.html`: mobile-friendly HTML email template.
+- `.github/workflows/daily-news.yml`: daily 06:00 Beijing time GitHub Actions schedule.
+
+Run tests:
+
+```bash
+python -m unittest
+```
+
+## Legacy Finance Briefing
+
+The legacy MyNews workflow is a configurable automated news-briefing system for building a 1-5 minute daily "news breakfast" from RSS-like sources, article pages, extractive summarization, and email delivery.
 
 The first implemented category is `finance`, covering mainstream UK/US finance news, official US government and Federal Reserve updates, important China macro/finance news, Elon Musk/X-related market-moving updates, and other economy-sensitive sources. Entertainment gossip is filtered out by default.
 
