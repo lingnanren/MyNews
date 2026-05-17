@@ -9,7 +9,7 @@ import urllib.error
 import urllib.request
 from typing import TypedDict
 
-from config import DEFAULT_CONFIG, load_config
+from config import DEFAULT_CONFIG, ERROR_CODES, load_config
 from modules.data_collector import NewsItem
 from utils.validators import clamp_text
 
@@ -37,7 +37,7 @@ MAJOR_HINTS = ("突发", "重大", "宣布", "签署", "冲突", "地震", "峰�
 
 def generate_summary(text: str, category: str) -> str:
     """
-    使用 DeepSeek API 生成 30-50 字新闻摘要；未配置密钥时使用本地兜底摘要。
+    使用 DeepSeek API 生成 30-50 字新闻摘要。
     """
     prompt = (
         f"你是一位资深新闻编辑，请将以下{CATEGORY_LABELS.get(category, category)}新闻"
@@ -51,7 +51,7 @@ def generate_summary(text: str, category: str) -> str:
     )
     config = load_config()
     if not config.deepseek_api_key:
-        return _fallback_summary(text)
+        raise RuntimeError(f"AI_API_ERROR:{ERROR_CODES['AI_API_ERROR']} DEEPSEEK_API_KEY is required")
     return _call_deepseek(prompt, config.deepseek_api_key, config.deepseek_model)
 
 
@@ -133,14 +133,7 @@ def _call_deepseek(prompt: str, api_key: str, model: str) -> str:
         return _fit_summary(data["choices"][0]["message"]["content"])
     except (KeyError, IndexError, urllib.error.URLError, TimeoutError, ValueError) as exc:
         logger.error("DeepSeek API调用失败: %s", exc)
-        raise RuntimeError(f"AI_API_ERROR: {exc}") from exc
-
-
-def _fallback_summary(text: str) -> str:
-    cleaned = re.sub(r"\s+", "，", re.sub(r"<[^>]+>", "", text)).strip("，。 ")
-    if not cleaned:
-        cleaned = "该新闻暂无完整正文，需结合原文继续核验关键信息"
-    return _fit_summary(cleaned)
+        raise RuntimeError(f"AI_API_ERROR:{ERROR_CODES['AI_API_ERROR']} {exc}") from exc
 
 
 def _fit_summary(summary: str) -> str:

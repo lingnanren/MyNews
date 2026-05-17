@@ -3,6 +3,8 @@ from __future__ import annotations
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
+from config import ERROR_CODES
+
 
 WEEKDAYS = ("星期一", "星期二", "星期三", "星期四", "星期五", "星期六", "星期日")
 LUNAR_MONTHS = ("正月", "二月", "三月", "四月", "五月", "六月", "七月", "八月", "九月", "十月", "冬月", "腊月")
@@ -69,11 +71,8 @@ def _format_lunar(date: datetime) -> str:
         day_name = LUNAR_DAYS[lunar.day - 1]
         leap = "闰" if lunar.isLeapMonth else ""
         return f"农历{year_name}年{leap}{month_name}{day_name}"
-    except Exception:
-        year_name = _ganzhi_from_offset(date.year - 4)
-        month_name = LUNAR_MONTHS[(date.month - 1) % 12]
-        day_name = LUNAR_DAYS[(date.day - 1) % 30]
-        return f"农历{year_name}年{month_name}{day_name}"
+    except Exception as exc:
+        raise RuntimeError(f"DATE_CALC_ERROR:{ERROR_CODES['DATE_CALC_ERROR']} lunar date calculation failed") from exc
 
 
 def _format_ganzhi(date: datetime) -> str:
@@ -90,11 +89,8 @@ def _format_ganzhi(date: datetime) -> str:
             f"{GAN[month_gz.tg]}{ZHI[month_gz.dz]}月 "
             f"{GAN[day_gz.tg]}{ZHI[day_gz.dz]}日"
         )
-    except Exception:
-        year = _ganzhi_from_offset(date.year - 4)
-        month = _ganzhi_from_offset((date.year * 12 + date.month + 12) % 60)
-        day = _ganzhi_from_offset((date.toordinal() + 14) % 60)
-        return f"天干地支：{year}年 {month}月 {day}日"
+    except Exception as exc:
+        raise RuntimeError(f"DATE_CALC_ERROR:{ERROR_CODES['DATE_CALC_ERROR']} ganzhi calculation failed") from exc
 
 
 def _ganzhi_from_offset(offset: int) -> str:

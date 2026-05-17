@@ -6,7 +6,7 @@ from pathlib import Path
 
 try:
     from dotenv import load_dotenv
-except ModuleNotFoundError:  # pragma: no cover - production uses python-dotenv
+except ModuleNotFoundError:  # pragma: no cover - requirements.txt provides python-dotenv
     def load_dotenv() -> None:
         env_path = Path(".env")
         if not env_path.exists():
@@ -20,21 +20,19 @@ except ModuleNotFoundError:  # pragma: no cover - production uses python-dotenv
         return None
 
 
-ROOT_DIR = Path(__file__).resolve().parent
-
 NEWS_SOURCES = {
     "domestic": [
-        {"url": "https://rsshub.app/official/zhengfu/gwy", "type": "rss", "priority": 10, "name": "国务院"},
-        {"url": "https://rsshub.app/people/politics", "type": "rss", "priority": 9, "name": "人民网"},
-        {"url": "https://rsshub.app/xinhuanet/politics", "type": "rss", "priority": 8, "name": "新华网"},
+        {"url": "https://rsshub.app/official/zhengfu/gwy", "type": "rss", "priority": 10},
+        {"url": "https://rsshub.app/people/politics", "type": "rss", "priority": 9},
+        {"url": "https://rsshub.app/xinhuanet/politics", "type": "rss", "priority": 8},
     ],
     "international": [
-        {"url": "https://rsshub.app/bbc/world", "type": "rss", "priority": 10, "name": "BBC"},
-        {"url": "https://rsshub.app/reuters/world", "type": "rss", "priority": 9, "name": "Reuters"},
+        {"url": "https://rsshub.app/bbc/world", "type": "rss", "priority": 10},
+        {"url": "https://rsshub.app/reuters/world", "type": "rss", "priority": 9},
     ],
     "finance": [
-        {"url": "https://rsshub.app/caixin/finance", "type": "rss", "priority": 10, "name": "财新"},
-        {"url": "https://rsshub.app/36kr/finance", "type": "rss", "priority": 9, "name": "36氪"},
+        {"url": "https://rsshub.app/caixin/finance", "type": "rss", "priority": 10},
+        {"url": "https://rsshub.app/36kr/finance", "type": "rss", "priority": 9},
     ],
 }
 
@@ -73,6 +71,16 @@ EXTENSION_CONFIG = {
     "advanced_analytics": False,
 }
 
+EMAIL_CONFIG = {
+    "smtp_server": "smtp.qq.com",
+    "smtp_port": 587,
+    "smtp_user": "your_email@qq.com",
+    "smtp_password": "your_password",
+    "sender": "your_email@qq.com",
+    "recipients": ["test1@example.com", "test2@example.com"],
+    "subject_template": "【每天读报5分钟】{date}新闻摘要",
+}
+
 
 @dataclass(frozen=True)
 class AppConfig:
@@ -84,34 +92,27 @@ class AppConfig:
     smtp_password: str
     sender: str
     recipients: tuple[str, ...]
+    subject_template: str
     run_time: str
     domestic_count: int
     international_count: int
     finance_count: int
     max_headline_title_length: int
-    subject_template: str = "【每天读报5分钟】{date}新闻摘要"
 
 
 def load_config() -> AppConfig:
     load_dotenv()
-    smtp_user = _first_env("SMTP_USER", "SMTP_USERNAME", "MYNEWS_SMTP_USER")
-    recipients = tuple(
-        item.strip()
-        for item in (
-            _first_env("RECIPIENT_EMAILS", "MYNEWS_RECIPIENT_EMAILS", "MYNEWS_TO_EMAIL")
-            or _legacy_recipient()
-        ).split(",")
-        if item.strip()
-    )
+    recipients = tuple(item.strip() for item in os.getenv("RECIPIENT_EMAILS", "").split(",") if item.strip())
     return AppConfig(
         deepseek_api_key=os.getenv("DEEPSEEK_API_KEY", ""),
         deepseek_model=os.getenv("DEEPSEEK_MODEL", "deepseek-chat"),
-        smtp_server=_first_env("SMTP_SERVER", "MYNEWS_SMTP_HOST") or "smtp.qq.com",
-        smtp_port=int(_first_env("SMTP_PORT", "MYNEWS_SMTP_PORT") or "587"),
-        smtp_user=smtp_user,
-        smtp_password=_first_env("SMTP_PASSWORD", "MYNEWS_SMTP_PASSWORD"),
-        sender=_first_env("SENDER_EMAIL", "MYNEWS_FROM_EMAIL") or smtp_user,
+        smtp_server=os.getenv("SMTP_SERVER", EMAIL_CONFIG["smtp_server"]),
+        smtp_port=int(os.getenv("SMTP_PORT", str(EMAIL_CONFIG["smtp_port"]))),
+        smtp_user=os.getenv("SMTP_USER", ""),
+        smtp_password=os.getenv("SMTP_PASSWORD", ""),
+        sender=os.getenv("SMTP_USER", ""),
         recipients=recipients,
+        subject_template=EMAIL_CONFIG["subject_template"],
         run_time=os.getenv("RUN_TIME", "06:00"),
         domestic_count=int(os.getenv("DOMESTIC_NEWS_COUNT", str(DEFAULT_CONFIG["domestic_count"]))),
         international_count=int(os.getenv("INTERNATIONAL_NEWS_COUNT", str(DEFAULT_CONFIG["international_count"]))),
@@ -126,24 +127,3 @@ def category_limits(config: AppConfig) -> dict[str, int]:
         "international": config.international_count,
         "finance": config.finance_count,
     }
-
-
-def _first_env(*names: str) -> str:
-    for name in names:
-        value = os.getenv(name)
-        if value:
-            return value
-    return ""
-
-
-def _legacy_recipient() -> str:
-    category_path = ROOT_DIR / "config" / "categories.json"
-    if not category_path.exists():
-        return ""
-    try:
-        import json
-
-        data = json.loads(category_path.read_text(encoding="utf-8"))
-        return data.get("categories", {}).get("finance", {}).get("recipient", "")
-    except (OSError, ValueError, TypeError):
-        return ""

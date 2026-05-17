@@ -15,7 +15,7 @@ try:
 except ModuleNotFoundError:  # pragma: no cover - requirements.txt provides aiohttp
     aiohttp = None
 
-from config import DEFAULT_CONFIG, NEWS_SOURCES
+from config import DEFAULT_CONFIG, ERROR_CODES, NEWS_SOURCES
 
 
 logger = logging.getLogger(__name__)
@@ -37,6 +37,8 @@ async def collect_news() -> dict[str, list[NewsItem]]:
     """
     采集新闻数据，按 domestic/international/finance 分类返回。
     """
+    if aiohttp is None:
+        raise RuntimeError(f"NEWS_FETCH_ERROR:{ERROR_CODES['NEWS_FETCH_ERROR']} aiohttp is required")
     timeout = aiohttp.ClientTimeout(total=300, connect=20)
     headers = {"User-Agent": DEFAULT_CONFIG["user_agent"]}
     ssl_context = ssl.create_default_context()
@@ -76,7 +78,8 @@ async def _fetch_source(session: aiohttp.ClientSession, category: str, source: d
 def _parse_feed(text: str, category: str, source: dict) -> list[NewsItem]:
     root = ET.fromstring(text.replace("&nbsp;", "&#160;"))
     if root.tag.endswith("rss") or root.find("channel") is not None:
-        nodes = (root.find("channel") or root).findall("item")
+        channel = root.find("channel")
+        nodes = (channel if channel is not None else root).findall("item")
         return [_rss_item(node, category, source) for node in nodes if _text(node, "title")]
     ns = {"atom": "http://www.w3.org/2005/Atom"}
     nodes = root.findall("atom:entry", ns) or root.findall("entry")
@@ -157,5 +160,3 @@ def _parse_datetime(value: str) -> datetime:
 
 def _source_name(url: str) -> str:
     return url.split("/")[2] if "://" in url else url
-    if aiohttp is None:
-        raise RuntimeError("aiohttp is required for news collection. Install dependencies from requirements.txt.")

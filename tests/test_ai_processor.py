@@ -1,0 +1,34 @@
+from __future__ import annotations
+
+import os
+import unittest
+from unittest.mock import patch
+
+from modules.ai_processor import _fit_summary, generate_headline_titles, generate_summary
+
+
+class AIProcessorTest(unittest.TestCase):
+    def test_generate_summary_requires_deepseek_key(self) -> None:
+        with patch.dict(os.environ, {"DEEPSEEK_API_KEY": ""}, clear=False):
+            with self.assertRaisesRegex(RuntimeError, "AI_API_ERROR"):
+                generate_summary("国务院发布重要政策", "domestic")
+
+    def test_fit_summary_keeps_length_limits(self) -> None:
+        summary = _fit_summary("国务院发布重要政策，明确下一阶段重点工作安排，涉及民生和产业发展，需要持续跟进。")
+        self.assertGreaterEqual(len(summary), 30)
+        self.assertLessEqual(len(summary), 50)
+
+    def test_headline_title_length(self) -> None:
+        titles = generate_headline_titles(
+            [
+                {"title": "国务院发布重要政策", "summary": "国务院发布政策影响全国。", "source": "国务院", "category": "domestic", "is_headline": False},
+                {"title": "央行公布数据", "summary": "央行公布金融数据。", "source": "央行", "category": "finance", "is_headline": False},
+                {"title": "国际峰会举行", "summary": "国际峰会举行。", "source": "BBC", "category": "international", "is_headline": False},
+            ]
+        )
+        self.assertEqual(len(titles), 3)
+        self.assertTrue(all(len(title) <= 10 for title in titles))
+
+
+if __name__ == "__main__":
+    unittest.main()

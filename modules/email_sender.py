@@ -1,12 +1,11 @@
 from __future__ import annotations
 
-import asyncio
 import logging
 import smtplib
+import time
 from email.message import EmailMessage
 
-from config import DEFAULT_CONFIG, load_config
-from modules.formatter import format_text_content
+from config import DEFAULT_CONFIG, ERROR_CODES, load_config
 
 
 logger = logging.getLogger(__name__)
@@ -18,13 +17,13 @@ async def send_email(html_content: str, date_info: dict) -> bool:
     """
     config = load_config()
     if not config.smtp_user or not config.smtp_password or not config.recipients:
-        raise RuntimeError("CONFIG_ERROR: SMTP_USER, SMTP_PASSWORD and RECIPIENT_EMAILS are required")
+        raise RuntimeError(f"CONFIG_ERROR:{ERROR_CODES['CONFIG_ERROR']} SMTP_USER, SMTP_PASSWORD and RECIPIENT_EMAILS are required")
 
     subject = config.subject_template.format(date=f"{date_info['date'].month}月{date_info['date'].day}日")
     success_count = 0
     for recipient in config.recipients:
         try:
-            await _send_with_retries(subject, html_content, recipient, config)
+            _send_with_retries(subject, html_content, recipient, config)
             success_count += 1
             logger.info("邮件发送成功: %s", recipient)
         except smtplib.SMTPAuthenticationError:
@@ -37,22 +36,22 @@ async def send_email(html_content: str, date_info: dict) -> bool:
     return success_count == len(config.recipients)
 
 
-async def _send_with_retries(subject: str, html_content: str, recipient: str, config) -> None:
-    delay = 1
+def _send_with_retries(subject: str, html_content: str, recipient: str, config) -> None:
+    delay = DEFAULT_CONFIG["retry_delay"]
     last_error: Exception | None = None
     for attempt in range(DEFAULT_CONFIG["retry_count"]):
         try:
-            await asyncio.to_thread(_send_once, subject, html_content, recipient, config)
+            _send_once(subject, html_content, recipient, config)
             return
         except smtplib.SMTPAuthenticationError:
             raise
         except Exception as exc:
             last_error = exc
             if attempt < 2:
-                await asyncio.sleep(delay)
+                time.sleep(delay)
                 delay *= 2
     if last_error:
-        raise last_error
+        raise RuntimeError(f"EMAIL_SEND_ERROR:{ERROR_CODES['EMAIL_SEND_ERROR']} {last_error}") from last_error
 
 
 def _send_once(subject: str, html_content: str, recipient: str, config) -> None:
@@ -67,9 +66,3 @@ def _send_once(subject: str, html_content: str, recipient: str, config) -> None:
         smtp.starttls()
         smtp.login(config.smtp_user, config.smtp_password)
         smtp.send_message(message)
-
-
-async def send_email_with_text_fallback(html_content: str, date_info: dict, summaries: dict) -> bool:
-    # 保留一个便于后续扩展的入口，目前主流程使用 send_email。
-    _ = format_text_content(summaries, date_info)
-    return await send_email(html_content, date_info)
