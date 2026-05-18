@@ -23,6 +23,7 @@ class SummaryItem(TypedDict):
     source: str
     category: str
     is_headline: bool
+    score: int
 
 
 CATEGORY_LABELS = {
@@ -157,6 +158,7 @@ def _summarize_item(item: NewsItem) -> SummaryItem:
         "source": item["source"],
         "category": item["category"],
         "is_headline": False,
+        "score": _news_score(item),
     }
 
 
@@ -263,6 +265,16 @@ def _headline_score(item: SummaryItem) -> int:
     score += 35 if any(hint in text for hint in ECONOMIC_HINTS) else 0
     score += max((weight for source, weight in SOURCE_WEIGHTS.items() if source in item["source"]), default=0)
     score += min(len(item["summary"]), DEFAULT_CONFIG["max_summary_length"])
+    score += int(item.get("score", 0))
+    return score
+
+
+def _news_score(item: NewsItem) -> int:
+    text = f"{item['title']} {item['content']} {item['source']}"
+    score = 0
+    score += sum(20 for keyword in GOVERNMENT_HINTS + MAJOR_HINTS + NATIONAL_HINTS + ECONOMIC_HINTS if keyword in text)
+    score += max((weight for source, weight in SOURCE_WEIGHTS.items() if source in item["source"]), default=0)
+    score += min(len(item["content"]), 120) // 4
     return score
 
 

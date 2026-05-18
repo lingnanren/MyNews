@@ -10,7 +10,7 @@ import xml.etree.ElementTree as ET
 from datetime import datetime, timezone
 from email.utils import parsedate_to_datetime
 from typing import TypedDict
-from urllib.parse import urlsplit, urlunsplit
+from urllib.parse import urljoin, urlsplit, urlunsplit
 
 try:
     import aiohttp
@@ -33,7 +33,9 @@ class NewsItem(TypedDict):
 
 
 TAG_RE = re.compile(r"<[^>]+>")
+LINK_RE = re.compile(r"<a\b[^>]*href=[\"'](?P<href>[^\"']+)[\"'][^>]*>(?P<title>.*?)</a>", re.I | re.S)
 RSSHUB_HOSTS = ("rsshub.app", "rsshub.rssforever.com", "rsshub.uneasy.win")
+HOT_KEYWORDS = ("头条", "要闻", "重磅", "重大", "突发", "发布", "国务院", "中央", "央行", "财政", "监管", "全国", "中国", "经济", "金融")
 
 
 async def collect_news() -> dict[str, list[NewsItem]]:
@@ -75,6 +77,11 @@ async def _fetch_source(session: aiohttp.ClientSession, category: str, source: d
             response.raise_for_status()
             text = await response.text()
         return _parse_gov_jsonp(text, category, source)
+    if source.get("type") == "html_listing":
+        async with session.get(source["url"]) as response:
+            response.raise_for_status()
+            text = await response.text()
+        return _parse_html_listing(text, category, source)
     if source.get("type") != "rss":
         return []
     last_error: Exception | None = None
@@ -126,6 +133,32 @@ def _parse_gov_jsonp(text: str, category: str, source: dict) -> list[NewsItem]:
     return items
 
 
+def _parse_html_listing(text: str, category: str, source: dict) -> list[NewsItem]:
+    items: list[NewsItem] = []
+    seen: set[str] = set()
+    for match in LINK_RE.finditer(text):
+        title = _clean_html(match.group("title"))
+        if not _looks_like_news_title(title):
+            continue
+        url = urljoin(source["url"], html.unescape(match.group("href")).strip())
+        if url in seen or not urlsplit(url).scheme.startswith("http"):
+            continue
+        seen.add(url)
+        items.append(
+            {
+                "title": title,
+                "content": title,
+                "source": source.get("name") or _source_name(source["url"]),
+                "url": url,
+                "publish_time": datetime.now(timezone.utc),
+                "category": category,
+            }
+        )
+        if len(items) >= 30:
+            break
+    return items
+
+
 def _rss_item(node: ET.Element, category: str, source: dict) -> NewsItem:
     content = _clean_html(_text(node, "description") or _text(node, "content:encoded"))
     return {
@@ -156,10 +189,35 @@ def _atom_item(node: ET.Element, category: str, source: dict, ns: dict[str, str]
 
 def _dedupe_and_rank(items: list[NewsItem]) -> list[NewsItem]:
     seen: dict[str, NewsItem] = {}
-    for item in sorted(items, key=lambda row: row["publish_time"], reverse=True):
-        key = item["url"] or item["title"]
-        seen.setdefault(key, item)
-    return list(seen.values())
+    for item in sorted(items, key=lambda row: (_item_score(row), row["publish_time"]), reverse=True):
+        key = _dedupe_key(item)
+        current = seen.get(key)
+        if current is None or _item_score(item) > _item_score(current):
+            seen[key] = item
+    return sorted(seen.values(), key=lambda row: (_item_score(row), row["publish_time"]), reverse=True)
+
+
+def _item_score(item: NewsItem) -> int:
+    text = f"{item['title']} {item['content']} {item['source']}"
+    score = 0
+    score += sum(20 for keyword in HOT_KEYWORDS if keyword in text)
+    score += 40 if item["source"] in {"中国政府网", "人民网", "新华网", "中国新闻网", "新浪财经", "东方财富", "证券时报", "第一财经", "财联社"} else 0
+    score += min(len(item["content"]), 120) // 4
+    return score
+
+
+def _dedupe_key(item: NewsItem) -> str:
+    title = re.sub(r"[^\u4e00-\u9fffA-Za-z0-9]+", "", item["title"]).lower()
+    return title[:28] or item["url"]
+
+
+def _looks_like_news_title(title: str) -> bool:
+    if len(title) < 8 or len(title) > 80:
+        return False
+    if not re.search(r"[\u4e00-\u9fff]", title):
+        return False
+    blocked = ("登录", "注册", "广告", "客户端", "视频", "图片", "专题", "更多", "首页", "联系我们")
+    return not any(word in title for word in blocked)
 
 
 def _text(node: ET.Element, tag: str, ns: dict[str, str] | None = None) -> str:

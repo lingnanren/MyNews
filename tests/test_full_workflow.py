@@ -30,7 +30,7 @@ class FullWorkflowTest(unittest.IsolatedAsyncioTestCase):
                     "summary": "国务院发布重要政策，明确下一阶段重点工作安排，涉及民生和产业发展。",
                     "source": "国务院",
                     "category": "domestic",
-                    "is_headline": True,
+                    "is_headline": True, "score": 100,
                 }
             ],
             "international": [],

@@ -14,6 +14,7 @@ def _summary(title: str, category: str, source: str = "新华社") -> SummaryIte
         "source": source,
         "category": category,
         "is_headline": False,
+        "score": 0,
     }
 
 
@@ -54,6 +55,23 @@ class FormattingTest(unittest.TestCase):
         self.assertIn("【财经新闻】（1条）", content)
         self.assertIn("（来源：新华社）", content)
         self.assertIn("【每日语录】", content)
+
+    def test_headline_uses_highest_scored_news(self) -> None:
+        date_info = {
+            "gregorian": "2026年5月18日 星期一",
+            "lunar": "乙巳年四月廿二",
+            "ganzhi": "乙巳年 辛巳月 戊申日",
+            "date": datetime(2026, 5, 18),
+        }
+        content = format_text_content(
+            {
+                "domestic": [{**_summary("普通国内", "domestic"), "score": 1}],
+                "international": [{**_summary("国际头条", "international", "BBC"), "score": 999}],
+                "finance": [{**_summary("财经新闻", "finance", "财新"), "score": 10}],
+            },
+            date_info,
+        )
+        self.assertTrue(content.startswith("5月18日新闻 ｜ 国际头条"))
 
 
 if __name__ == "__main__":

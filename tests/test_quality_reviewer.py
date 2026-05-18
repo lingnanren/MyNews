@@ -16,6 +16,7 @@ class QualityReviewerTest(unittest.TestCase):
                         "source": "BBC",
                         "category": "international",
                         "is_headline": False,
+                        "score": 0,
                     }
                 ]
             },
@@ -32,7 +33,7 @@ class QualityReviewerTest(unittest.TestCase):
                         "summary": "国务院发布重要政策，明确下一阶段重点工作安排，涉及民生和产业发展。",
                         "source": "中国政府网",
                         "category": "domestic",
-                        "is_headline": True,
+                        "is_headline": True, "score": 100,
                     }
                 ]
             },

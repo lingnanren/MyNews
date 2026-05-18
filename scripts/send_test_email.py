@@ -13,6 +13,7 @@ if str(PROJECT_ROOT) not in sys.path:
 from config import category_limits, load_config
 from modules.ai_processor import SummaryItem, generate_summaries
 from modules.ai_processor import _make_title, english_summary_to_chinese
+from modules.ai_processor import _news_score
 from modules.data_collector import NewsItem, collect_news
 from modules.date_calculator import get_date_info
 from modules.email_sender import send_email
@@ -89,6 +90,7 @@ def _test_summary(item: NewsItem) -> SummaryItem:
         "source": item["source"],
         "category": item["category"],
         "is_headline": False,
+        "score": _news_score(item),
     }
 
 

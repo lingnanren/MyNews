@@ -6,6 +6,7 @@ from pathlib import Path
 from zoneinfo import ZoneInfo
 
 from modules.ai_processor import SummaryItem, generate_headline_titles
+from modules.quote_provider import get_daily_quote
 
 
 CATEGORY_TITLES = {
@@ -13,15 +14,12 @@ CATEGORY_TITLES = {
     "international": "国际新闻",
     "finance": "财经新闻",
 }
-DAILY_QUOTE = {
-    "content": "人生没有白走的路，每一步都算数。",
-    "author": "李宗盛",
-}
-
 
 def format_content(summaries: dict[str, list[SummaryItem]], date_info: dict) -> str:
+    summaries = _sort_summaries(summaries)
     flat = [item for group in summaries.values() for item in group]
     headline_title = _headline_title(date_info, generate_headline_titles(flat))
+    daily_quote = get_daily_quote()
     current_time = datetime.now(ZoneInfo("Asia/Shanghai")).strftime("%Y-%m-%d %H:%M")
     template = Path("templates/email_template.html")
     if template.exists():
@@ -35,15 +33,16 @@ def format_content(summaries: dict[str, list[SummaryItem]], date_info: dict) -> 
                 domestic_news=summaries.get("domestic", []),
                 international_news=summaries.get("international", []),
                 finance_news=summaries.get("finance", []),
-                daily_quote=DAILY_QUOTE,
+                daily_quote=daily_quote,
                 current_time=current_time,
             )
         except ModuleNotFoundError:
             pass
-    return _render_html(headline_title, summaries, date_info, current_time)
+    return _render_html(headline_title, summaries, date_info, current_time, daily_quote)
 
 
 def format_text_content(summaries: dict[str, list[SummaryItem]], date_info: dict) -> str:
+    summaries = _sort_summaries(summaries)
     flat = [item for group in summaries.values() for item in group]
     lines = [
         _headline_title(date_info, generate_headline_titles(flat)),
@@ -57,7 +56,8 @@ def format_text_content(summaries: dict[str, list[SummaryItem]], date_info: dict
         lines.extend(["", f"【{title}】（{len(items)}条）"])
         for index, item in enumerate(items, start=1):
             lines.append(f"{index}. {item['title']} {item['summary']}（来源：{item['source']}）")
-    lines.extend(["", "【每日语录】", f"\"{DAILY_QUOTE['content']}\" —— {DAILY_QUOTE['author']}"])
+    daily_quote = get_daily_quote()
+    lines.extend(["", "【每日语录】", f"\"{daily_quote['content']}\" —— {daily_quote['author']}"])
     return "\n".join(lines)
 
 
@@ -66,11 +66,19 @@ def _headline_title(date_info: dict, titles: list[str]) -> str:
     return f"{date.month}月{date.day}日新闻 ｜ {titles[0]} ； {titles[1]} ；{titles[2]}"
 
 
+def _sort_summaries(summaries: dict[str, list[SummaryItem]]) -> dict[str, list[SummaryItem]]:
+    return {
+        category: sorted(items, key=lambda item: int(item.get("score", 0)), reverse=True)
+        for category, items in summaries.items()
+    }
+
+
 def _render_html(
     headline_title: str,
     summaries: dict[str, list[SummaryItem]],
     date_info: dict,
     current_time: str,
+    daily_quote: dict[str, str],
 ) -> str:
     sections = "\n".join(
         _render_section(title, summaries.get(category, []))
@@ -102,8 +110,8 @@ def _render_html(
     </div>
     {sections}
     <div class="quote">
-        <p>"{html.escape(DAILY_QUOTE["content"])}"</p>
-        <p>—— {html.escape(DAILY_QUOTE["author"])}</p>
+        <p>"{html.escape(daily_quote["content"])}"</p>
+        <p>—— {html.escape(daily_quote["author"])}</p>
     </div>
     <div class="footer"><p>每天读报5分钟 · {html.escape(current_time)}</p></div>
 </body>

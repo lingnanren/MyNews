@@ -21,9 +21,9 @@ class AIProcessorTest(unittest.TestCase):
     def test_headline_title_length(self) -> None:
         titles = generate_headline_titles(
             [
-                {"title": "国务院发布重要政策", "summary": "国务院发布政策影响全国。", "source": "国务院", "category": "domestic", "is_headline": False},
-                {"title": "央行公布数据", "summary": "央行公布金融数据。", "source": "央行", "category": "finance", "is_headline": False},
-                {"title": "国际峰会举行", "summary": "国际峰会举行。", "source": "BBC", "category": "international", "is_headline": False},
+                {"title": "国务院发布重要政策", "summary": "国务院发布政策影响全国。", "source": "国务院", "category": "domestic", "is_headline": False, "score": 0},
+                {"title": "央行公布数据", "summary": "央行公布金融数据。", "source": "央行", "category": "finance", "is_headline": False, "score": 0},
+                {"title": "国际峰会举行", "summary": "国际峰会举行。", "source": "BBC", "category": "international", "is_headline": False, "score": 0},
             ]
         )
         self.assertEqual(len(titles), 3)
@@ -32,10 +32,10 @@ class AIProcessorTest(unittest.TestCase):
     def test_headlines_are_ranked_globally_not_by_category(self) -> None:
         titles = generate_headline_titles(
             [
-                {"title": "国务院发布政策", "summary": "国务院发布影响全国的重要政策。", "source": "国务院", "category": "domestic", "is_headline": False},
-                {"title": "央行公布数据", "summary": "央行公布重要金融数据，影响全国市场。", "source": "央行", "category": "finance", "is_headline": False},
-                {"title": "财政发布通知", "summary": "财政部门发布全国性政策通知。", "source": "新华社", "category": "domestic", "is_headline": False},
-                {"title": "国际活动举行", "summary": "一项国际活动举行。", "source": "BBC", "category": "international", "is_headline": False},
+                {"title": "国务院发布政策", "summary": "国务院发布影响全国的重要政策。", "source": "国务院", "category": "domestic", "is_headline": False, "score": 0},
+                {"title": "央行公布数据", "summary": "央行公布重要金融数据，影响全国市场。", "source": "央行", "category": "finance", "is_headline": False, "score": 0},
+                {"title": "财政发布通知", "summary": "财政部门发布全国性政策通知。", "source": "新华社", "category": "domestic", "is_headline": False, "score": 0},
+                {"title": "国际活动举行", "summary": "一项国际活动举行。", "source": "BBC", "category": "international", "is_headline": False, "score": 0},
             ]
         )
         self.assertNotIn("国际活动举行", titles)
