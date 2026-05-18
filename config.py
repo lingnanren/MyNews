@@ -23,6 +23,8 @@ except ModuleNotFoundError:  # pragma: no cover - requirements.txt provides pyth
 NEWS_SOURCES = {
     "domestic": [
         {"url": "https://rsshub.app/official/zhengfu/gwy", "type": "rss", "priority": 10},
+        {"url": "https://www.gov.cn/pushinfo/v150203/pushinfo.jsonp", "type": "gov_jsonp", "priority": 10, "name": "中国政府网"},
+        {"url": "http://www.people.com.cn/rss/politics.xml", "type": "rss", "priority": 9, "name": "人民网"},
         {"url": "https://rsshub.app/people/politics", "type": "rss", "priority": 9},
         {"url": "https://rsshub.app/xinhuanet/politics", "type": "rss", "priority": 8},
     ],

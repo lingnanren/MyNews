@@ -12,10 +12,12 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from config import category_limits, load_config
 from modules.ai_processor import SummaryItem, generate_summaries
+from modules.ai_processor import _make_title, english_summary_to_chinese
 from modules.data_collector import NewsItem, collect_news
 from modules.date_calculator import get_date_info
 from modules.email_sender import send_email
 from modules.formatter import format_content
+from modules.quality_reviewer import review_email_quality
 from utils.logger import setup_logging
 
 
@@ -53,6 +55,9 @@ async def main() -> bool:
     if not any(limited_news.values()):
         raise RuntimeError("NEWS_FETCH_ERROR: no real news was collected for test email")
     summaries = generate_summaries(limited_news) if config.deepseek_api_key else _generate_test_summaries(limited_news)
+    review = review_email_quality(summaries, date_info)
+    if not review.passed:
+        raise RuntimeError(f"QUALITY_REVIEW_ERROR: {'; '.join(review.issues)}")
     html_content = format_content(summaries, date_info)
     return await send_email(html_content, date_info)
 
@@ -69,11 +74,15 @@ def _generate_test_summaries(news_data: dict[str, list[NewsItem]]) -> dict[str, 
 
 
 def _test_summary(item: NewsItem) -> SummaryItem:
-    text = re.sub(r"\s+", "，", f"{item['title']}，{item['content']}").strip("，。 ")
-    if len(text) < 30:
-        text = f"{text}，后续进展仍需持续关注"
-    summary = text[:49].rstrip("，。；;") + "。"
-    title = re.sub(r"[^\u4e00-\u9fffA-Za-z0-9]+", "", item["title"])[:10] or "今日要闻"
+    source_text = f"{item['title']}。{item['content']}".strip()
+    title = _make_title(item["title"])
+    if _looks_english(source_text):
+        summary = english_summary_to_chinese(source_text)
+    else:
+        text = re.sub(r"\s+", "，", source_text).strip("，。 ")
+        if len(text) < 30:
+            text = f"{text}，后续进展仍需持续关注"
+        summary = text[:49].rstrip("，。；;") + "。"
     return {
         "title": title,
         "summary": summary,
@@ -81,6 +90,12 @@ def _test_summary(item: NewsItem) -> SummaryItem:
         "category": item["category"],
         "is_headline": False,
     }
+
+
+def _looks_english(text: str) -> bool:
+    letters = len(re.findall(r"[A-Za-z]", text))
+    cjk = len(re.findall(r"[\u4e00-\u9fff]", text))
+    return letters >= 12 and letters > cjk * 2
 
 
 if __name__ == "__main__":

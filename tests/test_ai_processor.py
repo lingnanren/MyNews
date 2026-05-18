@@ -4,7 +4,7 @@ import os
 import unittest
 from unittest.mock import patch
 
-from modules.ai_processor import _fit_summary, generate_headline_titles, generate_summary
+from modules.ai_processor import _fit_summary, _make_title, english_summary_to_chinese, generate_headline_titles, generate_summary
 
 
 class AIProcessorTest(unittest.TestCase):
@@ -39,6 +39,16 @@ class AIProcessorTest(unittest.TestCase):
             ]
         )
         self.assertNotIn("国际活动举行", titles)
+
+    def test_english_title_becomes_chinese_topic(self) -> None:
+        self.assertEqual(_make_title("Trump says US and China may hold trade talks"), "特朗普中国会谈")
+
+    def test_english_summary_becomes_chinese_without_word_commas(self) -> None:
+        summary = english_summary_to_chinese("Trump says United States and China may hold trade talks over tariffs.")
+        self.assertRegex(summary, r"[\u4e00-\u9fff]")
+        self.assertNotRegex(summary, r"[A-Za-z]+，")
+        self.assertGreaterEqual(len(summary), 30)
+        self.assertLessEqual(len(summary), 50)
 
 
 if __name__ == "__main__":

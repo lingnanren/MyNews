@@ -46,6 +46,44 @@ SOURCE_WEIGHTS = {
     "BBC": 18,
     "36氪": 12,
 }
+ENGLISH_TITLE_MAP = {
+    "trump": "特朗普",
+    "russia": "俄罗斯",
+    "ukraine": "俄乌局势",
+    "china": "中国",
+    "israel": "以色列",
+    "gaza": "加沙局势",
+    "iran": "伊朗",
+    "us": "美国",
+    "eu": "欧盟",
+    "europe": "欧洲",
+    "market": "市场",
+    "stocks": "股市",
+    "tariff": "关税",
+    "trade": "贸易",
+    "election": "选举",
+    "climate": "气候",
+    "ai": "人工智能",
+}
+ENGLISH_SUMMARY_MAP = {
+    "trump": "特朗普",
+    "russia": "俄罗斯",
+    "ukraine": "乌克兰",
+    "china": "中国",
+    "israel": "以色列",
+    "gaza": "加沙",
+    "iran": "伊朗",
+    "united states": "美国",
+    "market": "市场",
+    "stocks": "股市",
+    "tariff": "关税",
+    "trade": "贸易",
+    "officials": "官员",
+    "president": "总统",
+    "government": "政府",
+    "economy": "经济",
+    "company": "企业",
+}
 
 
 def generate_summary(text: str, category: str) -> str:
@@ -161,10 +199,59 @@ def _fit_summary(summary: str) -> str:
 
 
 def _make_title(title: str) -> str:
+    if _looks_english(title):
+        return _english_title_to_chinese(title)
     cleaned = re.sub(r"[^\u4e00-\u9fffA-Za-z0-9]+", "", title)
     if not cleaned:
         return "今日要闻"
     return clamp_text(cleaned, DEFAULT_CONFIG["max_title_length"])
+
+
+def _looks_english(text: str) -> bool:
+    letters = len(re.findall(r"[A-Za-z]", text))
+    cjk = len(re.findall(r"[\u4e00-\u9fff]", text))
+    return letters >= 8 and letters > cjk * 2
+
+
+def _english_title_to_chinese(title: str) -> str:
+    lowered = title.lower()
+    labels = []
+    for key, value in ENGLISH_TITLE_MAP.items():
+        if key in lowered and value not in labels:
+            labels.append(value)
+        if len(labels) == 2:
+            break
+    if not labels:
+        labels.append("国际要闻")
+    if any(word in lowered for word in ("war", "attack", "strike", "conflict", "crisis")):
+        labels.append("冲突")
+    elif any(word in lowered for word in ("deal", "talk", "summit", "meeting")):
+        labels.append("会谈")
+    elif any(word in lowered for word in ("market", "stock", "economy", "trade", "tariff")):
+        labels.append("经济")
+    else:
+        labels.append("动态")
+    return clamp_text("".join(labels), DEFAULT_CONFIG["max_title_length"])
+
+
+def english_summary_to_chinese(text: str) -> str:
+    lowered = text.lower()
+    labels = []
+    for key, value in ENGLISH_SUMMARY_MAP.items():
+        if key in lowered and value not in labels:
+            labels.append(value)
+        if len(labels) >= 4:
+            break
+    topic = "、".join(labels) if labels else "国际新闻"
+    if any(word in lowered for word in ("war", "attack", "strike", "conflict", "crisis")):
+        action = "相关冲突和安全局势出现新进展"
+    elif any(word in lowered for word in ("talk", "summit", "meeting", "deal")):
+        action = "相关外交会谈和政策安排出现新进展"
+    elif any(word in lowered for word in ("market", "stock", "economy", "trade", "tariff")):
+        action = "相关经济和市场政策出现新变化"
+    else:
+        action = "相关事件出现新进展"
+    return _fit_summary(f"{topic}{action}，后续影响仍需关注")
 
 
 def _headline_score(item: SummaryItem) -> int:

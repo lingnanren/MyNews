@@ -11,6 +11,7 @@ from modules.data_collector import collect_news
 from modules.date_calculator import get_date_info
 from modules.email_sender import send_email
 from modules.formatter import format_content, format_text_content
+from modules.quality_reviewer import review_email_quality
 from utils.logger import setup_logging
 
 
@@ -32,6 +33,9 @@ async def main(*, dry_run: bool = False) -> dict:
             for items in [news_data.get(category, [])]
         }
         summaries = generate_summaries(limited_news)
+        review = review_email_quality(summaries, date_info)
+        if not review.passed:
+            raise RuntimeError(f"FORMAT_ERROR:{ERROR_CODES['FORMAT_ERROR']} {'; '.join(review.issues)}")
         html_content = format_content(summaries, date_info)
         logger.info("格式化内容预览: %s", format_text_content(summaries, date_info)[:500])
         email_sent = False

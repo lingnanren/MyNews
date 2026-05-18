@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import html
+import json
 import logging
 import re
 import ssl
@@ -69,6 +70,11 @@ async def collect_news() -> dict[str, list[NewsItem]]:
 
 
 async def _fetch_source(session: aiohttp.ClientSession, category: str, source: dict) -> list[NewsItem]:
+    if source.get("type") == "gov_jsonp":
+        async with session.get(source["url"]) as response:
+            response.raise_for_status()
+            text = await response.text()
+        return _parse_gov_jsonp(text, category, source)
     if source.get("type") != "rss":
         return []
     last_error: Exception | None = None
@@ -94,6 +100,30 @@ def _parse_feed(text: str, category: str, source: dict) -> list[NewsItem]:
     ns = {"atom": "http://www.w3.org/2005/Atom"}
     nodes = root.findall("atom:entry", ns) or root.findall("entry")
     return [_atom_item(node, category, source, ns) for node in nodes if _text(node, "atom:title", ns) or _text(node, "title")]
+
+
+def _parse_gov_jsonp(text: str, category: str, source: dict) -> list[NewsItem]:
+    match = re.search(r"pushInfoJsonpCallBack\((.*)\)\s*;?\s*$", text, re.S)
+    if not match:
+        return []
+    data = json.loads(match.group(1))
+    items: list[NewsItem] = []
+    for row in data:
+        title = html.unescape(str(row.get("title") or row.get("description") or "")).strip()
+        url = str(row.get("url") or row.get("link") or "").strip()
+        if not title or not url:
+            continue
+        items.append(
+            {
+                "title": title,
+                "content": _clean_html(str(row.get("description") or title)),
+                "source": source.get("name") or "中国政府网",
+                "url": url,
+                "publish_time": _parse_datetime(str(row.get("pubDate") or row.get("time") or row.get("date") or "")),
+                "category": category,
+            }
+        )
+    return items
 
 
 def _rss_item(node: ET.Element, category: str, source: dict) -> NewsItem:
