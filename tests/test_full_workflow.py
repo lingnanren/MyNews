@@ -37,9 +37,9 @@ class FullWorkflowTest(unittest.IsolatedAsyncioTestCase):
             "finance": [],
         }
         mock_date = {
-            "gregorian": "公历2026年5月17日 星期日",
-            "lunar": "农历乙巳年四月廿一",
-            "ganzhi": "天干地支：乙巳年 辛巳月 丁未日",
+            "gregorian": "2026年5月17日 星期日",
+            "lunar": "乙巳年四月廿一",
+            "ganzhi": "乙巳年 辛巳月 丁未日",
             "date": datetime(2026, 5, 17),
         }
         with patch.object(daily_main, "get_date_info", return_value=mock_date), patch.object(

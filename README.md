@@ -39,6 +39,14 @@ python main.py --dry-run
 python main.py
 ```
 
+发送完成后测试邮件会采集真实新闻并发送，不使用静态样例内容：
+
+```bash
+python scripts/send_test_email.py
+```
+
+如果本机没有 `DEEPSEEK_API_KEY`，测试邮件脚本会仅在测试邮件中使用真实新闻本地压缩摘要；正式 `main.py` 仍严格要求 DeepSeek。
+
 ## 目录
 
 ```text
@@ -56,6 +64,8 @@ daily-news-reader/
 │   └── email_sender.py
 ├── templates/
 │   └── email_template.html
+├── scripts/
+│   └── send_test_email.py
 ├── utils/
 │   ├── logger.py
 │   ├── retry.py

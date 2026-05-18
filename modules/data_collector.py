@@ -9,6 +9,7 @@ import xml.etree.ElementTree as ET
 from datetime import datetime, timezone
 from email.utils import parsedate_to_datetime
 from typing import TypedDict
+from urllib.parse import urlsplit, urlunsplit
 
 try:
     import aiohttp
@@ -31,6 +32,7 @@ class NewsItem(TypedDict):
 
 
 TAG_RE = re.compile(r"<[^>]+>")
+RSSHUB_HOSTS = ("rsshub.app", "rsshub.rssforever.com", "rsshub.uneasy.win")
 
 
 async def collect_news() -> dict[str, list[NewsItem]]:
@@ -69,10 +71,18 @@ async def collect_news() -> dict[str, list[NewsItem]]:
 async def _fetch_source(session: aiohttp.ClientSession, category: str, source: dict) -> list[NewsItem]:
     if source.get("type") != "rss":
         return []
-    async with session.get(source["url"]) as response:
-        response.raise_for_status()
-        text = await response.text()
-    return _parse_feed(text, category, source)
+    last_error: Exception | None = None
+    for url in _candidate_urls(source["url"]):
+        try:
+            async with session.get(url) as response:
+                response.raise_for_status()
+                text = await response.text()
+            return _parse_feed(text, category, {**source, "url": url})
+        except Exception as exc:
+            last_error = exc
+    if last_error:
+        raise last_error
+    return []
 
 
 def _parse_feed(text: str, category: str, source: dict) -> list[NewsItem]:
@@ -160,3 +170,13 @@ def _parse_datetime(value: str) -> datetime:
 
 def _source_name(url: str) -> str:
     return url.split("/")[2] if "://" in url else url
+
+
+def _candidate_urls(url: str) -> list[str]:
+    parts = urlsplit(url)
+    if parts.netloc != "rsshub.app":
+        return [url]
+    return [
+        urlunsplit((parts.scheme, host, parts.path, parts.query, parts.fragment))
+        for host in RSSHUB_HOSTS
+    ]

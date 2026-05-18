@@ -50,7 +50,7 @@ def get_date_info(now: datetime | None = None) -> dict:
     """
     local_now = (now or datetime.now(ZoneInfo("Asia/Shanghai"))).astimezone(ZoneInfo("Asia/Shanghai"))
     date = local_now.replace(tzinfo=None)
-    gregorian = f"公历{date.year}年{date.month}月{date.day}日 {WEEKDAYS[date.weekday()]}"
+    gregorian = f"{date.year}年{date.month}月{date.day}日 {WEEKDAYS[date.weekday()]}"
     lunar = _format_lunar(date)
     ganzhi = _format_ganzhi(date)
     return {
@@ -70,7 +70,7 @@ def _format_lunar(date: datetime) -> str:
         month_name = LUNAR_MONTHS[lunar.month - 1]
         day_name = LUNAR_DAYS[lunar.day - 1]
         leap = "闰" if lunar.isLeapMonth else ""
-        return f"农历{year_name}年{leap}{month_name}{day_name}"
+        return f"{year_name}年{leap}{month_name}{day_name}"
     except Exception as exc:
         raise RuntimeError(f"DATE_CALC_ERROR:{ERROR_CODES['DATE_CALC_ERROR']} lunar date calculation failed") from exc
 
@@ -84,7 +84,6 @@ def _format_ganzhi(date: datetime) -> str:
         month_gz = day.getMonthGZ()
         day_gz = day.getDayGZ()
         return (
-            "天干地支："
             f"{GAN[year_gz.tg]}{ZHI[year_gz.dz]}年 "
             f"{GAN[month_gz.tg]}{ZHI[month_gz.dz]}月 "
             f"{GAN[day_gz.tg]}{ZHI[day_gz.dz]}日"

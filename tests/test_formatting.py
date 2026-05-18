@@ -32,9 +32,9 @@ class FormattingTest(unittest.TestCase):
 
     def test_text_format_contains_required_sections_and_sources(self) -> None:
         date_info = {
-            "gregorian": "公历2026年5月17日 星期日",
-            "lunar": "农历乙巳年四月廿一",
-            "ganzhi": "天干地支：乙巳年 辛巳月 丁未日",
+            "gregorian": "2026年5月17日 星期日",
+            "lunar": "乙巳年四月廿一",
+            "ganzhi": "乙巳年 辛巳月 丁未日",
             "date": datetime(2026, 5, 17),
         }
         content = format_text_content(
@@ -46,6 +46,9 @@ class FormattingTest(unittest.TestCase):
             date_info,
         )
         self.assertIn("5月17日新闻 ｜", content)
+        self.assertNotIn("公历", content)
+        self.assertNotIn("农历", content)
+        self.assertNotIn("天干地支：", content)
         self.assertIn("【国内新闻】（1条）", content)
         self.assertIn("【国际新闻】（1条）", content)
         self.assertIn("【财经新闻】（1条）", content)

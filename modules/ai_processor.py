@@ -33,6 +33,19 @@ CATEGORY_LABELS = {
 
 GOVERNMENT_HINTS = ("国务院", "政府", "部长", "政策", "发布", "通知", "公告", "会议", "人大", "央行")
 MAJOR_HINTS = ("突发", "重大", "宣布", "签署", "冲突", "地震", "峰会", "制裁", "关税", "数据")
+NATIONAL_HINTS = ("全国", "中央", "国家", "中国", "美国", "欧盟", "全球", "国际")
+ECONOMIC_HINTS = ("央行", "财政", "金融", "经济", "通胀", "利率", "股市", "汇率", "企业", "投资")
+SOURCE_WEIGHTS = {
+    "国务院": 40,
+    "新华社": 35,
+    "新华网": 35,
+    "人民网": 30,
+    "央行": 28,
+    "财新": 24,
+    "Reuters": 22,
+    "BBC": 18,
+    "36氪": 12,
+}
 
 
 def generate_summary(text: str, category: str) -> str:
@@ -83,7 +96,7 @@ def generate_summaries(news_data: dict[str, list[NewsItem]]) -> dict[str, list[S
 
 def generate_headline_titles(summaries: list[SummaryItem]) -> list[str]:
     """
-    从所有摘要中选出最重要的 3 条，返回每个不超过 10 个汉字的标题。
+    从所有摘要中按重要性选出最重要的 3 条，不按分类平均分配。
     """
     ranked = sorted(summaries, key=_headline_score, reverse=True)
     titles: list[str] = []
@@ -154,12 +167,16 @@ def _make_title(title: str) -> str:
     return clamp_text(cleaned, DEFAULT_CONFIG["max_title_length"])
 
 
-def _headline_score(item: SummaryItem) -> tuple[int, int, int]:
+def _headline_score(item: SummaryItem) -> int:
     text = f"{item['title']}{item['summary']}{item['source']}"
-    government = 1 if any(hint in text for hint in GOVERNMENT_HINTS) else 0
-    major = 1 if any(hint in text for hint in MAJOR_HINTS) else 0
-    category_weight = {"domestic": 3, "finance": 2, "international": 1}.get(item["category"], 0)
-    return government, major, category_weight
+    score = 0
+    score += 100 if any(hint in text for hint in GOVERNMENT_HINTS) else 0
+    score += 70 if any(hint in text for hint in MAJOR_HINTS) else 0
+    score += 45 if any(hint in text for hint in NATIONAL_HINTS) else 0
+    score += 35 if any(hint in text for hint in ECONOMIC_HINTS) else 0
+    score += max((weight for source, weight in SOURCE_WEIGHTS.items() if source in item["source"]), default=0)
+    score += min(len(item["summary"]), DEFAULT_CONFIG["max_summary_length"])
+    return score
 
 
 def publish_to_wechat(content: str, config: dict) -> bool:
