@@ -16,9 +16,17 @@ class ReviewResult:
     issues: tuple[str, ...]
 
 
-def review_email_quality(summaries: dict[str, list[SummaryItem]], date_info: dict) -> ReviewResult:
+def review_email_quality(
+    summaries: dict[str, list[SummaryItem]],
+    date_info: dict,
+    expected_min_counts: dict[str, int] | None = None,
+) -> ReviewResult:
     issues: list[str] = []
     _review_date(date_info, issues)
+    for category, minimum in (expected_min_counts or {}).items():
+        actual = len(summaries.get(category, []))
+        if actual < minimum:
+            issues.append(f"{category} 新闻数量不足: {actual}/{minimum}")
     for category, items in summaries.items():
         for index, item in enumerate(items, start=1):
             label = f"{category}[{index}]"
@@ -29,6 +37,24 @@ def review_email_quality(summaries: dict[str, list[SummaryItem]], date_info: dic
     else:
         logger.error("邮件内容质量审核失败: %s", "; ".join(result.issues))
     return result
+
+
+def select_quality_summaries(
+    summaries: dict[str, list[SummaryItem]],
+    limits: dict[str, int],
+) -> dict[str, list[SummaryItem]]:
+    selected: dict[str, list[SummaryItem]] = {}
+    for category, limit in limits.items():
+        quality_items = [
+            item for item in summaries.get(category, [])
+            if _item_passes_quality(item)
+        ]
+        selected[category] = sorted(
+            quality_items,
+            key=lambda item: int(item.get("score", 0)),
+            reverse=True,
+        )[:limit]
+    return selected
 
 
 def _review_date(date_info: dict, issues: list[str]) -> None:
@@ -43,16 +69,29 @@ def _review_item(label: str, item: SummaryItem, issues: list[str]) -> None:
     summary = item["summary"].strip()
     if not title:
         issues.append(f"{label} 标题为空")
-    if len(title) > 10:
-        issues.append(f"{label} 标题超过10字")
+    if len(title) > 24:
+        issues.append(f"{label} 标题超过24字")
     if _looks_english(title):
         issues.append(f"{label} 标题未中文化")
     if _has_comma_after_every_english_word(summary):
         issues.append(f"{label} 英文摘要存在逐词逗号")
     if _looks_english(summary):
         issues.append(f"{label} 摘要未翻译成中文")
-    if not (30 <= len(summary) <= 50):
-        issues.append(f"{label} 摘要长度不在30-50字")
+    if not (60 <= len(summary) <= 160):
+        issues.append(f"{label} 摘要长度不在60-160字")
+
+
+def _item_passes_quality(item: SummaryItem) -> bool:
+    title = item["title"].strip()
+    summary = item["summary"].strip()
+    return (
+        bool(title)
+        and len(title) <= 24
+        and not _looks_english(title)
+        and not _has_comma_after_every_english_word(summary)
+        and not _looks_english(summary)
+        and 60 <= len(summary) <= 160
+    )
 
 
 def _looks_english(text: str) -> bool:

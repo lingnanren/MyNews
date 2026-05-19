@@ -10,7 +10,7 @@ from modules.formatter import format_text_content
 def _summary(title: str, category: str, source: str = "新华社") -> SummaryItem:
     return {
         "title": title,
-        "summary": "这是三十到五十字之间的客观新闻摘要，保留关键事实和影响范围。",
+        "summary": "这是一段接近日报样式的新闻正文，保留时间地点人物事件和后续影响，语言客观清楚，便于读者快速了解重点信息。",
         "source": source,
         "category": category,
         "is_headline": False,
@@ -33,9 +33,9 @@ class FormattingTest(unittest.TestCase):
 
     def test_text_format_contains_required_sections_and_sources(self) -> None:
         date_info = {
-            "gregorian": "2026年5月17日 星期日",
-            "lunar": "乙巳年四月廿一",
-            "ganzhi": "乙巳年 辛巳月 丁未日",
+            "gregorian": "5月17日 星期日",
+            "lunar": "四月廿一乙巳年",
+            "ganzhi": "辛巳月 丁未日",
             "date": datetime(2026, 5, 17),
         }
         content = format_text_content(
@@ -46,21 +46,23 @@ class FormattingTest(unittest.TestCase):
             },
             date_info,
         )
-        self.assertIn("5月17日新闻 ｜", content)
+        self.assertIn("5月17日新闻 |", content)
         self.assertNotIn("公历", content)
         self.assertNotIn("农历", content)
         self.assertNotIn("天干地支：", content)
-        self.assertIn("【国内新闻】（1条）", content)
-        self.assertIn("【国际新闻】（1条）", content)
-        self.assertIn("【财经新闻】（1条）", content)
-        self.assertIn("（来源：新华社）", content)
-        self.assertIn("【每日语录】", content)
+        self.assertIn("国内要闻", content)
+        self.assertIn("国际新闻", content)
+        self.assertIn("财经新闻", content)
+        self.assertIn("文娱体育", content)
+        self.assertIn("社会新闻", content)
+        self.assertNotIn("（来源：新华社）", content)
+        self.assertIn("每日金句", content)
 
     def test_headline_uses_highest_scored_news(self) -> None:
         date_info = {
-            "gregorian": "2026年5月18日 星期一",
-            "lunar": "乙巳年四月廿二",
-            "ganzhi": "乙巳年 辛巳月 戊申日",
+            "gregorian": "5月18日 星期一",
+            "lunar": "四月廿二乙巳年",
+            "ganzhi": "辛巳月 戊申日",
             "date": datetime(2026, 5, 18),
         }
         content = format_text_content(
@@ -71,7 +73,7 @@ class FormattingTest(unittest.TestCase):
             },
             date_info,
         )
-        self.assertTrue(content.startswith("5月18日新闻 ｜ 国际头条"))
+        self.assertTrue(content.startswith("5月18日新闻 |国际头条"))
 
 
 if __name__ == "__main__":

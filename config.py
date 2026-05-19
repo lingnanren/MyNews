@@ -36,6 +36,7 @@ NEWS_SOURCES = {
         {"url": "https://rsshub.app/xinhuanet/politics", "type": "rss", "priority": 8},
     ],
     "international": [
+        {"url": "https://www.chinanews.com.cn/rss/world.xml", "type": "rss", "priority": 10, "name": "中国新闻网"},
         {"url": "https://rsshub.app/bbc/world", "type": "rss", "priority": 10},
         {"url": "https://rsshub.app/reuters/world", "type": "rss", "priority": 9},
     ],
@@ -52,15 +53,27 @@ NEWS_SOURCES = {
         {"url": "https://rsshub.app/caixin/finance", "type": "rss", "priority": 10},
         {"url": "https://rsshub.app/36kr/finance", "type": "rss", "priority": 9},
     ],
+    "entertainment_sports": [
+        {"url": "https://www.chinanews.com.cn/rss/ty.xml", "type": "rss", "priority": 8, "name": "中国新闻网"},
+        {"url": "https://sports.sina.com.cn/", "type": "html_listing", "priority": 8, "name": "新浪体育"},
+        {"url": "https://ent.ifeng.com/", "type": "html_listing", "priority": 7, "name": "凤凰娱乐"},
+        {"url": "https://ent.163.com/", "type": "html_listing", "priority": 7, "name": "网易娱乐"},
+    ],
+    "society": [
+        {"url": "https://www.chinanews.com.cn/rss/sh.xml", "type": "rss", "priority": 9, "name": "中国新闻网"},
+        {"url": "https://news.sina.com.cn/society/", "type": "html_listing", "priority": 8, "name": "新浪新闻"},
+        {"url": "https://www.thepaper.cn/", "type": "html_listing", "priority": 8, "name": "澎湃新闻"},
+        {"url": "https://news.ifeng.com/society/", "type": "html_listing", "priority": 7, "name": "凤凰网"},
+    ],
 }
 
 DEFAULT_CONFIG = {
     "domestic_count": 15,
     "international_count": 10,
     "finance_count": 10,
-    "max_title_length": 10,
-    "max_summary_length": 50,
-    "min_summary_length": 30,
+    "max_title_length": 24,
+    "max_summary_length": 140,
+    "min_summary_length": 70,
     "retry_count": 3,
     "retry_delay": 60,
     "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
@@ -115,6 +128,8 @@ class AppConfig:
     domestic_count: int
     international_count: int
     finance_count: int
+    entertainment_sports_count: int
+    society_count: int
     max_headline_title_length: int
 
 
@@ -135,6 +150,8 @@ def load_config() -> AppConfig:
         domestic_count=int(os.getenv("DOMESTIC_NEWS_COUNT", str(DEFAULT_CONFIG["domestic_count"]))),
         international_count=int(os.getenv("INTERNATIONAL_NEWS_COUNT", str(DEFAULT_CONFIG["international_count"]))),
         finance_count=int(os.getenv("FINANCE_NEWS_COUNT", str(DEFAULT_CONFIG["finance_count"]))),
+        entertainment_sports_count=int(os.getenv("ENTERTAINMENT_SPORTS_NEWS_COUNT", "2")),
+        society_count=int(os.getenv("SOCIETY_NEWS_COUNT", "4")),
         max_headline_title_length=int(os.getenv("MAX_HEADLINE_TITLE_LENGTH", str(DEFAULT_CONFIG["max_title_length"]))),
     )
 
@@ -144,4 +161,6 @@ def category_limits(config: AppConfig) -> dict[str, int]:
         "domestic": config.domestic_count,
         "international": config.international_count,
         "finance": config.finance_count,
+        "entertainment_sports": config.entertainment_sports_count,
+        "society": config.society_count,
     }

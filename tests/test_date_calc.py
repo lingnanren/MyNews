@@ -24,10 +24,10 @@ class DateCalculatorTest(unittest.TestCase):
         fake_sxtwl_module = SimpleNamespace(fromSolar=lambda year, month, day: fake_day)
         with patch.dict(sys.modules, {"lunardate": fake_lunardate_module, "sxtwl": fake_sxtwl_module}):
             date_info = get_date_info(datetime(2026, 5, 17, 8, 0, tzinfo=ZoneInfo("Asia/Shanghai")))
-        self.assertRegex(date_info["gregorian"], r"^\d{4}年\d{1,2}月\d{1,2}日 星期[一二三四五六日]$")
-        self.assertEqual(date_info["gregorian"], "2026年5月17日 星期日")
-        self.assertEqual(date_info["lunar"], "乙巳年四月廿一")
-        self.assertEqual(date_info["ganzhi"], "乙巳年 辛巳月 丁未日")
+        self.assertRegex(date_info["gregorian"], r"^\d{1,2}月\d{1,2}日 星期[一二三四五六日]$")
+        self.assertEqual(date_info["gregorian"], "5月17日 星期日")
+        self.assertEqual(date_info["lunar"], "四月廿一乙巳年")
+        self.assertEqual(date_info["ganzhi"], "辛巳月 丁未日")
 
 
 if __name__ == "__main__":

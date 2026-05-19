@@ -4,6 +4,7 @@ import asyncio
 import os
 import re
 import sys
+from datetime import timezone
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -19,6 +20,8 @@ from modules.date_calculator import get_date_info
 from modules.email_sender import send_email
 from modules.formatter import format_content
 from modules.quality_reviewer import review_email_quality
+from modules.quality_reviewer import _has_comma_after_every_english_word
+from modules.quality_reviewer import select_quality_summaries
 from utils.logger import setup_logging
 
 
@@ -48,15 +51,20 @@ async def main() -> bool:
     config = load_config()
     date_info = get_date_info()
     news_data = await collect_news()
-    limited_news = {
-        category: items[:limit]
+    candidate_news = {
+        category: items[: max(limit * 4, limit + 10)]
         for category, limit in category_limits(config).items()
         for items in [news_data.get(category, [])]
     }
-    if not any(limited_news.values()):
+    if not any(candidate_news.values()):
         raise RuntimeError("NEWS_FETCH_ERROR: no real news was collected for test email")
-    summaries = generate_summaries(limited_news) if config.deepseek_api_key else _generate_test_summaries(limited_news)
-    review = review_email_quality(summaries, date_info)
+    raw_summaries = generate_summaries(candidate_news) if config.deepseek_api_key else _generate_test_summaries(candidate_news)
+    summaries = select_quality_summaries(raw_summaries, category_limits(config))
+    review = review_email_quality(
+        summaries,
+        date_info,
+        expected_min_counts={category: min(1, limit) for category, limit in category_limits(config).items()},
+    )
     if not review.passed:
         raise RuntimeError(f"QUALITY_REVIEW_ERROR: {'; '.join(review.issues)}")
     html_content = format_content(summaries, date_info)
@@ -70,7 +78,8 @@ def _generate_test_summaries(news_data: dict[str, list[NewsItem]]) -> dict[str, 
     """
     summaries: dict[str, list[SummaryItem]] = {}
     for category, items in news_data.items():
-        summaries[category] = [_test_summary(item) for item in items]
+        reviewed_items = [_test_summary(item) for item in items]
+        summaries[category] = [item for item in reviewed_items if _passes_item_quality(item)]
     return summaries
 
 
@@ -79,11 +88,9 @@ def _test_summary(item: NewsItem) -> SummaryItem:
     title = _make_title(item["title"])
     if _looks_english(source_text):
         summary = english_summary_to_chinese(source_text)
+        title = _make_title(source_text)
     else:
-        text = re.sub(r"\s+", "，", source_text).strip("，。 ")
-        if len(text) < 30:
-            text = f"{text}，后续进展仍需持续关注"
-        summary = text[:49].rstrip("，。；;") + "。"
+        summary = _editorial_summary(item, title)
     return {
         "title": title,
         "summary": summary,
@@ -98,6 +105,74 @@ def _looks_english(text: str) -> bool:
     letters = len(re.findall(r"[A-Za-z]", text))
     cjk = len(re.findall(r"[\u4e00-\u9fff]", text))
     return letters >= 12 and letters > cjk * 2
+
+
+def _editorial_summary(item: NewsItem, title: str) -> str:
+    text = _clean_source_text(item["content"] or item["title"])
+    title_clean = _clean_source_text(item["title"])
+    if text.startswith(title_clean):
+        text = text[len(title_clean):].lstrip("，。；;：: ")
+    if not text:
+        text = title_clean
+    text = _remove_repeated_segments(text)
+    publish_day = item["publish_time"].astimezone(timezone.utc).strftime("%m月%d日").replace("月0", "月").lstrip("0")
+    prefix = "" if re.search(r"\d{1,2}月\d{1,2}日|当地时间|今日|近日", text[:30]) else f"{publish_day}，"
+    body = f"{prefix}{text}".strip("，。 ")
+    if len(body) < 70:
+        body = _expand_short_body(item, body)
+    return body[:139].rstrip("，。；;") + "。"
+
+
+def _clean_source_text(text: str) -> str:
+    text = re.sub(r"\s+", "，", text or "")
+    text = re.sub(r"[\"'>]+", "", text)
+    text = re.sub(r"（[^）]*(人民视觉|资料图|摄|图片来源)[^）]*）", "", text)
+    text = re.sub(r"，{2,}", "，", text)
+    text = re.sub(r"。，", "。", text)
+    return text.strip("，。；;:： ")
+
+
+def _remove_repeated_segments(text: str) -> str:
+    parts = [part.strip() for part in re.split(r"[。；;]", text) if part.strip()]
+    seen: set[str] = set()
+    kept: list[str] = []
+    for part in parts:
+        key = re.sub(r"[^\u4e00-\u9fffA-Za-z0-9]+", "", part)[:36]
+        if key and key in seen:
+            continue
+        seen.add(key)
+        kept.append(part)
+    return "。".join(kept) if kept else text
+
+
+def _expand_short_body(item: NewsItem, body: str) -> str:
+    category_tail = {
+        "domestic": "相关安排将影响政策落实、公共服务和区域发展，后续推进情况值得关注",
+        "international": "事件可能牵动地区安全、外交互动和市场预期，各方后续表态仍需关注",
+        "finance": "市场将关注政策信号、资金流向和企业经营变化，后续影响仍待观察",
+        "entertainment_sports": "相关活动带动公众关注，也反映文体消费与城市活力的新变化",
+        "society": "相关部门已推进处置和服务保障，民生影响及后续进展仍需持续关注",
+    }
+    tail = category_tail.get(item["category"], "后续进展和相关影响仍需持续关注")
+    if body.endswith(tail):
+        return body
+    return f"{body}，{tail}"
+
+
+def _passes_item_quality(item: SummaryItem) -> bool:
+    return (
+        bool(item["title"].strip())
+        and len(item["title"]) <= 24
+        and not _looks_english(item["title"])
+        and not _looks_english(item["summary"])
+        and not _has_comma_after_every_english_word(item["summary"])
+        and not _contains_stale_date(item["summary"])
+        and 60 <= len(item["summary"]) <= 160
+    )
+
+
+def _contains_stale_date(text: str) -> bool:
+    return bool(re.search(r"202[0-5]年|2025-\d{2}-\d{2}|12月\d{1,2}日|11月\d{1,2}日", text))
 
 
 if __name__ == "__main__":

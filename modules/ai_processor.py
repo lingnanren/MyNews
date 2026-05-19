@@ -30,6 +30,8 @@ CATEGORY_LABELS = {
     "domestic": "国内",
     "international": "国际",
     "finance": "财经",
+    "entertainment_sports": "文娱体育",
+    "society": "社会",
 }
 
 GOVERNMENT_HINTS = ("国务院", "政府", "部长", "政策", "发布", "通知", "公告", "会议", "人大", "央行")
@@ -89,17 +91,18 @@ ENGLISH_SUMMARY_MAP = {
 
 def generate_summary(text: str, category: str) -> str:
     """
-    使用 DeepSeek API 生成 30-50 字新闻摘要。
+    使用 DeepSeek API 生成日报长段落。
     """
     prompt = (
         f"你是一位资深新闻编辑，请将以下{CATEGORY_LABELS.get(category, category)}新闻"
-        "压缩成30-50字的摘要，保留关键事实，用简洁的短句：\n"
+        "改写成80-140字的中文日报条目正文，保留关键事实，用信息密度高的短段落：\n"
         f"{text[:3500]}\n\n"
         "要求：\n"
-        "1. 严格控制在30-50字\n"
+        "1. 严格控制在80-140字\n"
         "2. 保留时间、地点、人物、事件等关键信息\n"
         "3. 用客观中立的语气\n"
-        "4. 不要添加个人观点"
+        "4. 不要添加个人观点\n"
+        "5. 不要照抄原标题，正文要像日报编辑整理后的新闻段落"
     )
     config = load_config()
     if not config.deepseek_api_key:
@@ -109,16 +112,11 @@ def generate_summary(text: str, category: str) -> str:
 
 def generate_summaries(news_data: dict[str, list[NewsItem]]) -> dict[str, list[SummaryItem]]:
     start = time.monotonic()
-    limits = {
-        "domestic": int(os.getenv("DOMESTIC_NEWS_COUNT", str(DEFAULT_CONFIG["domestic_count"]))),
-        "international": int(os.getenv("INTERNATIONAL_NEWS_COUNT", str(DEFAULT_CONFIG["international_count"]))),
-        "finance": int(os.getenv("FINANCE_NEWS_COUNT", str(DEFAULT_CONFIG["finance_count"]))),
-    }
     summaries: dict[str, list[SummaryItem]] = {}
     for category, items in news_data.items():
         summaries[category] = [
             _summarize_item(item)
-            for item in items[: limits.get(category, 10)]
+            for item in items
         ]
 
     flat = [item for group in summaries.values() for item in group]
@@ -195,7 +193,7 @@ def _fit_summary(summary: str) -> str:
     if len(cleaned) > max_body_length:
         cleaned = cleaned[:max_body_length]
     while len(cleaned) < DEFAULT_CONFIG["min_summary_length"] - 1:
-        cleaned += "，后续进展仍需持续关注"
+        cleaned += "，相关部门和市场后续反应仍需持续关注"
         cleaned = cleaned[: DEFAULT_CONFIG["min_summary_length"] - 1]
     return cleaned + "。"
 
@@ -253,7 +251,7 @@ def english_summary_to_chinese(text: str) -> str:
         action = "相关经济和市场政策出现新变化"
     else:
         action = "相关事件出现新进展"
-    return _fit_summary(f"{topic}{action}，后续影响仍需关注")
+    return _fit_summary(f"{topic}{action}，事件涉及政策、市场或公共安全影响，后续进展和各方回应仍需持续关注")
 
 
 def _headline_score(item: SummaryItem) -> int:

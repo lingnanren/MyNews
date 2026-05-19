@@ -10,10 +10,13 @@ from modules.quote_provider import get_daily_quote
 
 
 CATEGORY_TITLES = {
-    "domestic": "国内新闻",
+    "domestic": "国内要闻",
     "international": "国际新闻",
     "finance": "财经新闻",
+    "entertainment_sports": "文娱体育",
+    "society": "社会新闻",
 }
+
 
 def format_content(summaries: dict[str, list[SummaryItem]], date_info: dict) -> str:
     summaries = _sort_summaries(summaries)
@@ -30,9 +33,7 @@ def format_content(summaries: dict[str, list[SummaryItem]], date_info: dict) -> 
             return environment.from_string(template.read_text(encoding="utf-8")).render(
                 headline_title=headline_title,
                 date_info=date_info,
-                domestic_news=summaries.get("domestic", []),
-                international_news=summaries.get("international", []),
-                finance_news=summaries.get("finance", []),
+                section_news=[(title, summaries.get(category, [])) for category, title in CATEGORY_TITLES.items()],
                 daily_quote=daily_quote,
                 current_time=current_time,
             )
@@ -53,17 +54,17 @@ def format_text_content(summaries: dict[str, list[SummaryItem]], date_info: dict
     ]
     for category, title in CATEGORY_TITLES.items():
         items = summaries.get(category, [])
-        lines.extend(["", f"【{title}】（{len(items)}条）"])
+        lines.extend(["", title])
         for index, item in enumerate(items, start=1):
-            lines.append(f"{index}. {item['title']} {item['summary']}（来源：{item['source']}）")
+            lines.append(f"{item['title']} {item['summary']}")
     daily_quote = get_daily_quote()
-    lines.extend(["", "【每日语录】", f"\"{daily_quote['content']}\" —— {daily_quote['author']}"])
+    lines.extend(["", "每日金句", f"{daily_quote['content']} —— {daily_quote['author']}"])
     return "\n".join(lines)
 
 
 def _headline_title(date_info: dict, titles: list[str]) -> str:
     date = date_info["date"]
-    return f"{date.month}月{date.day}日新闻 ｜ {titles[0]} ； {titles[1]} ；{titles[2]}"
+    return f"{date.month}月{date.day}日新闻 |{titles[0]} ；{titles[1]}；{titles[2]}"
 
 
 def _sort_summaries(summaries: dict[str, list[SummaryItem]]) -> dict[str, list[SummaryItem]]:
@@ -95,8 +96,7 @@ def _render_html(
         .date-info {{ text-align: center; color: #666; margin: 10px 0; font-size: 14px; line-height: 1.8; }}
         .section {{ margin: 25px 0; }}
         .section-title {{ color: #007bff; font-size: 18px; font-weight: bold; border-left: 4px solid #007bff; padding-left: 10px; margin: 15px 0; }}
-        .news-item {{ margin: 8px 0; padding-left: 15px; border-left: 2px solid #e9ecef; }}
-        .news-source {{ font-size: 12px; color: #6c757d; margin-left: 5px; }}
+        .news-item {{ margin: 12px 0; }}
         .quote {{ text-align: center; font-style: italic; color: #28a745; margin: 25px 0; padding: 15px; border: 1px solid #28a745; border-radius: 5px; }}
         .footer {{ text-align: center; color: #6c757d; font-size: 12px; margin-top: 30px; border-top: 1px solid #e9ecef; padding-top: 15px; }}
     </style>
@@ -120,10 +120,10 @@ def _render_html(
 
 def _render_section(title: str, items: list[SummaryItem]) -> str:
     rows = "\n".join(
-        f"""<div class="news-item">{index}. {html.escape(item["title"])} {html.escape(item["summary"])}<span class="news-source">（来源：{html.escape(item["source"])}）</span></div>"""
+        f"""<div class="news-item">{html.escape(item["title"])} {html.escape(item["summary"])}</div>"""
         for index, item in enumerate(items, start=1)
     )
     return f"""<div class="section">
-        <div class="section-title">【{html.escape(title)}】（{len(items)}条）</div>
+        <div class="section-title">{html.escape(title)}</div>
         {rows}
     </div>"""
